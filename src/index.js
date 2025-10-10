@@ -279,7 +279,7 @@ io.on("connection", async (socket) => {
       arrowDestination: data["arrowDestination"],
       showPathVisualization: data["showPathVisualization"],
       mapSize: data["mapSize"],
-      excludedObjectsNames: data["excludedObjectsVirEnv"]
+      excludedObjectsNames: data["excludedObjectsNames"]
     });
   }
 
