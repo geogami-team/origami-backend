@@ -278,7 +278,8 @@ io.on("connection", async (socket) => {
       initialAvatarHeight: data["initialAvatarHeight"],
       arrowDestination: data["arrowDestination"],
       showPathVisualization: data["showPathVisualization"],
-      mapSize: data["mapSize"]
+      mapSize: data["mapSize"],
+      excludedObjectsNames: data["excludedObjectsVirEnv"]
     });
   }
 

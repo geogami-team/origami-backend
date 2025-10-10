@@ -43,6 +43,9 @@ const TaskSchema = new mongoose.Schema(
     initialFloor: {
       type: String,
     },
+    excludedObjectsVirEnv: {
+      type: [String],
+    },
   },
   { timestamps: true }
 );
