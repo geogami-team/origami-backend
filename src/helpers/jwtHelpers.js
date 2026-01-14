@@ -5,7 +5,7 @@ const config = require("config"),
   hashJWT = require("./jwtRefreshTokenHasher"),
   {
     addTokenToBlacklist,
-    addTokenHashToBlacklist,
+    // addTokenHashToBlacklist,
     isTokenBlacklisted,
   } = require("./tokenBlacklist"),
   { v4: uuidv4 } = require("uuid"),
@@ -34,6 +34,7 @@ const jwtVerifyOptions = {
   issuer: jwt_issuer,
 };
 
+// creates a new jwt and refresh token pair for the given user
 const createToken = function createToken(user) {
   const payload = { roles: user.roles },
     signOptions = Object.assign(
@@ -51,17 +52,21 @@ const createToken = function createToken(user) {
       // we now create the refreshToken.
       // and set the refreshTokenExpires to 1 week
       // it is a HMAC of the jwt string
-      const refreshToken = hashJWT(token);
+      const newRefreshToken = hashJWT(token);
       try {
-        user.refreshToken = refreshToken;
-        user.refreshTokenExpires = moment
-          .utc()
-          .add(Number(refresh_token_validity_ms), "ms")
-          .toDate();
+        // calculate new refresh token expiry date
+        const newTokenData = {
+          token: newRefreshToken,
+          expires: new Date(Date.now() + Number(refresh_token_validity_ms))
+        };
 
+        // save refresh token and expiry as a list to user
+        // This allows multiple devices to be logged in simultaneously
+        user.refreshTokens = user.refreshTokens || [];
+        user.refreshTokens.push(newTokenData);        
         await user.save();
 
-        return resolve({ token, refreshToken });
+        return resolve({ token, newRefreshToken });
       } catch (err) {
         return reject(err);
       }
@@ -78,22 +83,26 @@ const invalidateToken = function invalidateToken({
   addTokenToBlacklist(_jwt, _jwtString);
 };
 
+// refreshes a jwt using a valid refresh token
 const refreshJwt = async function refreshJwt(refreshToken) {
   const user = await User.findOne({
-    refreshToken,
-    refreshTokenExpires: { $gte: moment.utc().toDate() },
+    'refreshTokens.token': refreshToken,
+    'refreshTokens.expires': { $gte: new Date() }
   });
 
+  // if no user found, the refresh token is invalid or too old
   if (!user) {
     throw new Error(
       "Refresh token invalid or too old. Please sign in with your username and password."
     );
   }
 
-  // invalidate old token
-  addTokenHashToBlacklist(refreshToken);
+  // Find and remove this specific token (rotate it)
+  const tokenIndex = user.refreshTokens.findIndex(t => t.token === refreshToken);
+  user.refreshTokens.splice(tokenIndex, 1);  // Remove old token
 
-  const { token, refreshToken: newRefreshToken } = await createToken(user);
+  // create new token pair
+  const { token, newRefreshToken  } = await createToken(user);  // This now adds to array
 
   return Promise.resolve({ token, refreshToken: newRefreshToken, user });
 };

@@ -211,7 +211,7 @@ module.exports.authenticate = async function authenticate(req, res, next) {
   }
 
   if (await user.checkPassword(password)) {
-    const { token, refreshToken } = await createToken(user);
+    const { token, newRefreshToken: refreshToken } = await createToken(user);
 
     return res.status(200).send({
       code: "Authorized",
