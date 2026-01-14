@@ -52,7 +52,10 @@ const UserSchema = mongoose.Schema(
     emailConfirmationToken: { type: String, default: () => uuidv4() },
     unconfirmedEmail: { type: String },
     emailIsConfirmed: { type: Boolean, default: false, required: true },
-    refreshToken: { type: String },
+    refreshTokens: [{
+      token: { type: String, required: true },
+      expires: { type: Date, required: true }
+    }],
     refreshTokenExpires: { type: Date },
   },
   { timestamps: true }

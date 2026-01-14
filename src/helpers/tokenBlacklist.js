@@ -43,19 +43,23 @@ const addTokenToBlacklist = function addTokenToBlacklist(token, tokenString) {
   }
 };
 
-const addTokenHashToBlacklist = function addTokenHashToBlacklist(tokenHash) {
-  cleanupExpiredTokens();
+// ToDoL you might delete this function if not needed
+// const addTokenHashToBlacklist = function addTokenHashToBlacklist(tokenHash) {
+//   cleanupExpiredTokens();
 
-  if (typeof tokenHash === "string") {
-    // just set the exp claim to now plus one week to be sure
-    tokenBlacklist[tokenHash] = {
-      exp: moment.utc().add(1, "week").unix(),
-    };
-  }
-};
+//   if (typeof tokenHash === "string") {
+//     // just set the exp claim to now plus one week to be sure
+//     tokenBlacklist[tokenHash] = {
+//       // exp: moment.utc().add(1, "week").unix(),
+//       exp: Math.floor((Date.now() + 7 * 24 * 60 * 60 * 1000) / 1000),
+//     };
+
+//     console.log('\n Blacklist exp:', tokenBlacklist[tokenHash].exp);
+//   }
+// };
 
 module.exports = {
   isTokenBlacklisted,
   addTokenToBlacklist,
-  addTokenHashToBlacklist,
+  // addTokenHashToBlacklist,
 };
