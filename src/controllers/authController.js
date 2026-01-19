@@ -9,6 +9,7 @@ const {
   createToken,
   refreshJwt,
   invalidateToken,
+  removeExpiredRefreshTokens,
 } = require("../helpers/jwtHelpers");
 
 exports.roleAuthorization = function (roles) {
@@ -211,6 +212,9 @@ module.exports.authenticate = async function authenticate(req, res, next) {
   }
 
   if (await user.checkPassword(password)) {
+    // Before creating a new token, remove all expired refresh tokens from the user
+    await removeExpiredRefreshTokens(user);
+    // create token pair
     const { token, newRefreshToken: refreshToken } = await createToken(user);
 
     return res.status(200).send({
