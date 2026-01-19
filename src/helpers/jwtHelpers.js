@@ -107,8 +107,15 @@ const refreshJwt = async function refreshJwt(refreshToken) {
   return Promise.resolve({ token, refreshToken: newRefreshToken, user });
 };
 
-const jwtInvalidErrorMessage =
-  "Invalid JWT authorization. Please sign in to obtain new JWT.";
+const removeExpiredRefreshTokens = async function removeExpiredRefreshTokens(user) {
+  const currentDate = new Date();
+  // Filter out expired tokens
+  user.refreshTokens = user.refreshTokens.filter(t => t.expires >= currentDate);  
+  await user.save();
+}
+
+// const jwtInvalidErrorMessage =
+//   "Invalid JWT authorization. Please sign in to obtain new JWT.";
 
 const verifyJwt = function verifyJwt(req, res, next) {
   // check if Authorization header is present
@@ -165,4 +172,5 @@ module.exports = {
   invalidateToken,
   refreshJwt,
   verifyJwt,
+  removeExpiredRefreshTokens,
 };
