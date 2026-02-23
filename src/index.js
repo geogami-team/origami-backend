@@ -163,6 +163,7 @@ io.on("connection", async (socket) => {
     let roomCode = gameCodeRecieved["gameCode"]; // game code is user name
     // Check if room is created
     if (io.sockets.adapter.rooms[roomCode]) {
+      console.log("🚀 ~ (checkRoomNameExistance_v2): the room name " + roomCode + " exists:");
       callback({
         roomStatus: true,
       });
@@ -464,6 +465,7 @@ io.on("connection", async (socket) => {
       connStatus
     );
 
+    console.log("🚀 ~ handleChangePlayerConnectionStauts ~ socket.playerData:", socket.playerData)
     if (socket.playerData) {
       let roomName = socket.playerData["roomName"];
       let playerNo = socket.playerData["playerNo"];
