@@ -7,7 +7,7 @@ const Game = require("../../models/game");
 const postTrack = async (req, res) => {
   try {
     const trackGame = await Game.findOne({ _id: req.body.game });
-    console.log(trackGame);
+    // console.log("🚀 ~ postTrack ~ trackGame:", trackGame)
     const track = new Track({ ...req.body, game: trackGame._id });
     const savedTrack = await track.save();
     return res.status(201).send({
