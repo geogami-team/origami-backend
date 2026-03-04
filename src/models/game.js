@@ -32,6 +32,7 @@ const GameSchema = new mongoose.Schema(
     isVisible: Boolean,
     isCuratedGame: Boolean,
     disableShareData: Boolean,
+    skipTaskPin: String,
     coords: Array,
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   },
