@@ -208,6 +208,45 @@ router.post(
   }
 );
 
+/* Admin: list games created by a user (with track counts) */
+router.get(
+  "/user/:id/games",
+  passport.authenticate("jwt", { session: false }),
+  AuthController.roleAuthorization(["admin", "contentAdmin"]),
+  async function (req, res, next) {
+    try {
+      const Track = require("../../models/track");
+      const user = await User.findById(req.params.id).select("_id username email");
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const games = await Game.find({ user: user._id })
+        .select("_id name place isVRWorld isMultiplayerGame virEnvType isVisible createdAt");
+
+      // Attach track counts in parallel.
+      const gamesWithCounts = await Promise.all(
+        games.map(async (g) => {
+          const tracksCount = await Track.countDocuments({ game: g._id });
+          return {
+            _id: g._id,
+            name: g.name,
+            place: g.place,
+            isVRWorld: g.isVRWorld,
+            isMultiplayerGame: g.isMultiplayerGame,
+            virEnvType: g.virEnvType,
+            isVisible: g.isVisible,
+            createdAt: g.createdAt,
+            tracksCount,
+          };
+        })
+      );
+
+      res.json({ user, games: gamesWithCounts });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 /* Admin: trigger a password-reset email for a user */
 router.post(
   "/user/:id/trigger-password-reset",
