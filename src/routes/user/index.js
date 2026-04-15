@@ -5,6 +5,8 @@ const passport = require("passport");
 const User = require("../../models/user");
 const Game = require("../../models/game");
 var AuthController = require("../../controllers/authController");
+const { v4: uuidv4 } = require("uuid");
+const { verifyUserRegistration } = require("../../controllers/mailController");
 
 //register
 router.post("/register", AuthController.register);
@@ -159,15 +161,12 @@ router.put(
   passport.authenticate("jwt", { session: false }),
   AuthController.roleAuthorization(["admin", "contentAdmin"]),
   function (req, res, next) {
-    User.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true },
-      function (err, post) {
-        if (err) return next(err);
+    User.findByIdAndUpdate(req.params.id, req.body, { new: true })
+      .then((post) => {
+        if (!post) return res.status(404).json({ message: "User not found" });
         res.json(post);
-      }
-    );
+      })
+      .catch((err) => next(err));
   }
 );
 
@@ -183,6 +182,48 @@ router.delete(
         res.json(post);
       })
       .catch((err) => next(err));
+  }
+);
+
+/* Admin: resend email-verification link for a user */
+router.post(
+  "/user/:id/resend-verification",
+  passport.authenticate("jwt", { session: false }),
+  AuthController.roleAuthorization(["admin", "contentAdmin"]),
+  async function (req, res, next) {
+    try {
+      const user = await User.findById(req.params.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      if (user.emailIsConfirmed) {
+        return res.status(400).json({ message: "Email is already confirmed." });
+      }
+      // Regenerate the confirmation token so any leaked old link stops working.
+      user.emailConfirmationToken = uuidv4();
+      await user.save();
+      await verifyUserRegistration(user);
+      res.json({ message: "Verification email sent." });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/* Admin: trigger a password-reset email for a user */
+router.post(
+  "/user/:id/trigger-password-reset",
+  passport.authenticate("jwt", { session: false }),
+  AuthController.roleAuthorization(["admin", "contentAdmin"]),
+  async function (req, res, next) {
+    try {
+      const user = await User.findById(req.params.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      // Reuses the existing model method so the verification-code + email flow
+      // stays consistent with the user-initiated reset.
+      await User.initPasswordReset({ email: user.email });
+      res.json({ message: "Password reset email sent." });
+    } catch (err) {
+      next(err);
+    }
   }
 );
 
