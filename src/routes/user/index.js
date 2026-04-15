@@ -116,10 +116,12 @@ router.get(
   passport.authenticate("jwt", { session: false }),
   AuthController.roleAuthorization(["admin", "contentAdmin"]),
   function (req, res, next) {
-    User.findById(req.params.id, function (err, post) {
-      if (err) return next(err);
-      res.json(post);
-    });
+    User.findById(req.params.id)
+      .then((post) => {
+        if (!post) return res.status(404).json({ message: "User not found" });
+        res.json(post);
+      })
+      .catch((err) => next(err));
   }
 );
 
@@ -129,10 +131,9 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   AuthController.roleAuthorization(["admin", "contentAdmin"]),
   function (req, res, next) {
-    User.create(req.body, function (err, post) {
-      if (err) return next(err);
-      res.json(post);
-    });
+    User.create(req.body)
+      .then((post) => res.json(post))
+      .catch((err) => next(err));
   }
 );
 
@@ -176,8 +177,11 @@ router.delete(
   passport.authenticate("jwt", { session: false }),
   AuthController.roleAuthorization(["admin", "contentAdmin"]),
   function (req, res, next) {
-    User.findByIdAndRemove(req.params.id, req.body)
-      .then((post) => res.json(post))
+    User.findByIdAndDelete(req.params.id)
+      .then((post) => {
+        if (!post) return res.status(404).json({ message: "User not found" });
+        res.json(post);
+      })
       .catch((err) => next(err));
   }
 );
