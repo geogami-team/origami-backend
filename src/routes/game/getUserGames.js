@@ -3,13 +3,20 @@
 
 const Track = require("../../models/track");
 const Game = require("../../models/game");
+const User = require("../../models/user");
 
 const getUserGames = async (req, res) => {
   try {
-    //* 1. Get user id
+    //* 1. Get user info — we need the email address so we can check the
+    //*    game.sharedWith array (which stores emails, not ObjectIds).
     let user = req.user;
+    const userDoc = await User.findById(user._id).select("email");
+    const userEmail = userDoc ? userDoc.email.toLowerCase() : "";
 
-    //* 2. Get user games
+    //* 2. Get games this user can evaluate:
+    //*    - Games they created (user == their _id)   — original behaviour
+    //*    - Games shared with them (sharedWith array includes their email)
+    //*    Both still filtered by visibility (isVisible true or not set).
     let userGames = await Game.find({
       $and: [
         {
@@ -18,7 +25,12 @@ const getUserGames = async (req, res) => {
             { isVisible: { $exists: false } },
           ],
         },
-        { user: user._id },
+        {
+          $or: [
+            { user: user._id },
+            { sharedWith: userEmail },
+          ],
+        },
       ],
     })
       .select("_id")
