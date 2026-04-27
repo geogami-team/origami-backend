@@ -1,6 +1,7 @@
 const passport = require("passport");
 
 const { verifyUserRegistration } = require("./mailController");
+const { v4: uuidv4 } = require("uuid");
 
 var User = require("../models/user");
 var validator = require('validator');   // To validate received email
@@ -99,42 +100,53 @@ exports.deleteUserAccount = async function deleteUserAccount(req, res, next) {
 };
 
 exports.changeMail = async function changeMail(req, res, next) {
-  User.findOne({ email: req.body.mail }, async function (err, user) {
-    if (user) {
-      return res.send(201, {
+  try {
+    const newMail = (req.body.mail || "").trim().toLowerCase();
+    if (!newMail || !newMail.includes("@")) {
+      return res.status(400).json({ code: "error", message: "Invalid email." });
+    }
+
+    // Refuse if another account already uses this email.
+    const existing = await User.findOne({ email: newMail });
+    if (existing) {
+      return res.status(409).json({
         code: "error",
         message: "Email could not be changed. User already exists.",
       });
-    } else {
-      try {
-        let user = await User.changeMail(req.user, req.body.mail);
-        console.info(
-          "%s  just requested email change, id: %s",
-          req.user.email,
-          req.user._id
-        );
-        User.findOne({ _id: user._id }, function (err, newUser) {
-          if (newUser.unconfirmedEmail === req.body.mail) {
-            return res.send(200, {
-              code: "ok",
-              message: "Confirmation request send to new Email.",
-            });
-          } else {
-            return res.send(201, {
-              code: "error",
-              message: "Email could not be changed.",
-            });
-          }
-        });
-      } catch (err) {
-        console.info(err);
-        return res.send(201, {
-          code: "error",
-          message: "Email could not be changed.",
-        });
-      }
     }
-  });
+
+    // Update unconfirmedEmail + regenerate confirmation token, then send the
+    // verification email so the new address can be confirmed.
+    const me = await User.findById(req.user._id);
+    if (!me) return res.status(404).json({ code: "error", message: "User not found." });
+
+    me.unconfirmedEmail = newMail;
+    me.emailConfirmationToken = uuidv4();
+    me.emailIsConfirmed = false;
+    await me.save();
+
+    // verifyUserRegistration sends to user.email — for an email-change we
+    // want the link delivered to the NEW address, so pass a shimmed object
+    // that keeps everything else (id, token, username) but swaps the email.
+    await verifyUserRegistration({
+      _id: me._id,
+      username: me.username,
+      email: newMail,
+      emailConfirmationToken: me.emailConfirmationToken,
+    });
+
+    console.info("%s requested email change to %s", req.user.email, newMail);
+    return res.status(200).json({
+      code: "ok",
+      message: "Confirmation request sent to new email.",
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      code: "error",
+      message: "Email could not be changed.",
+    });
+  }
 };
 
 module.exports.confirmEmail = async function confirmEmail(req, res, next) {
@@ -202,34 +214,39 @@ module.exports.authenticate = async function authenticate(req, res, next) {
   }
 
 
-  // To check if email is already verified before allowing user to login
-  const emailIsConfirmed = user.emailIsConfirmed;
-  if(!emailIsConfirmed){
-    return res.send(401, {
-      code: "Unauthorized",
-      message: "Please verify your email address to activate your account.",
-    });
-  }
-
-  if (await user.checkPassword(password)) {
-    // Before creating a new token, remove all expired refresh tokens from the user
-    await removeExpiredRefreshTokens(user);
-    // create token pair
-    const { token, newRefreshToken: refreshToken } = await createToken(user);
-
-    return res.status(200).send({
-      code: "Authorized",
-      message: "Successfully signed in",
-      user: user,
-      token,
-      refreshToken,
-    });
-  } else {
+  // Validate the password first so we can return the correct error.
+  if (!(await user.checkPassword(password))) {
     return res.send(401, {
       code: "Unauthorized",
       message: "Wrong username or password",
     });
   }
+
+  // Issue a token even when the email is not confirmed so the user can
+  // reach the /user/verify-email page (resend or correct their email).
+  // The frontend uses `needsEmailVerification` to redirect them there
+  // instead of into the rest of the app.
+  await removeExpiredRefreshTokens(user);
+  const { token, newRefreshToken: refreshToken } = await createToken(user);
+
+  if (!user.emailIsConfirmed) {
+    return res.status(200).send({
+      code: "Authorized",
+      message: "Please verify your email address to activate your account.",
+      needsEmailVerification: true,
+      user: user,
+      token,
+      refreshToken,
+    });
+  }
+
+  return res.status(200).send({
+    code: "Authorized",
+    message: "Successfully signed in",
+    user: user,
+    token,
+    refreshToken,
+  });
 };
 
 module.exports.refreshJWT = async function refreshJWT(req, res, next) {

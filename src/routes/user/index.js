@@ -185,6 +185,44 @@ router.delete(
   }
 );
 
+/* Self-serve: resend the email-verification link for the logged-in user.
+   Includes a 60-second cooldown to prevent abuse. */
+const verificationResendCooldown = new Map(); // userId -> last sent timestamp (ms)
+router.post(
+  "/resend-verification",
+  passport.authenticate("jwt", { session: false }),
+  async function (req, res, next) {
+    try {
+      const user = await User.findById(req.user._id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      if (user.emailIsConfirmed) {
+        return res.status(400).json({ message: "Your email is already confirmed." });
+      }
+
+      // Cooldown check — don't allow more than one email per 60s per user.
+      const last = verificationResendCooldown.get(String(user._id)) || 0;
+      const now = Date.now();
+      const waitSeconds = Math.ceil((60 * 1000 - (now - last)) / 1000);
+      if (last && waitSeconds > 0) {
+        return res.status(429).json({
+          message: `Please wait ${waitSeconds}s before requesting another email.`,
+          retryAfter: waitSeconds,
+        });
+      }
+
+      // Regenerate the token so any old link that may have leaked stops working.
+      user.emailConfirmationToken = uuidv4();
+      await user.save();
+      await verifyUserRegistration(user);
+      verificationResendCooldown.set(String(user._id), now);
+
+      res.json({ message: "Verification email sent. Please check your inbox." });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 /* Admin: resend email-verification link for a user */
 router.post(
   "/user/:id/resend-verification",
