@@ -66,19 +66,69 @@ const shareGame = async (req, res) => {
       .map((e) => (typeof e === "string" ? e.trim().toLowerCase() : ""))
       .filter((e) => e && e.includes("@"));
 
-    // Only push emails that aren't already in the list (avoid duplicates).
+    // The owner's email — game can't be shared with the owner since they
+    // already have access through ownership.
+    const owner = await User.findById(game.user).select("email");
+    const ownerEmail = owner ? owner.email.toLowerCase() : "";
+
     const added = [];
+    const skippedOwner = [];
+    const skippedNoAccount = [];
+    const skippedAlreadyShared = [];
+
     for (const email of normalised) {
-      if (!game.sharedWith.includes(email)) {
-        game.sharedWith.push(email);
-        added.push(email);
+      // Reject sharing with the game owner.
+      if (email === ownerEmail) {
+        skippedOwner.push(email);
+        continue;
       }
+
+      // Reject if no GeoGami account exists with this email.
+      const existingUser = await User.findOne({ email }).select("_id");
+      if (!existingUser) {
+        skippedNoAccount.push(email);
+        continue;
+      }
+
+      // Skip already-shared (no error, just informative).
+      if (game.sharedWith.includes(email)) {
+        skippedAlreadyShared.push(email);
+        continue;
+      }
+
+      game.sharedWith.push(email);
+      added.push(email);
     }
 
     await game.save();
-    res.json({
-      message: `Shared with ${added.length} new user(s).`,
+
+    // Build a single, user-friendly message describing what happened.
+    const parts = [];
+    if (added.length) parts.push(`Shared with ${added.length} user(s).`);
+    if (skippedOwner.length)
+      parts.push(
+        `Skipped owner email (${skippedOwner.join(", ")}) — owners already have access.`
+      );
+    if (skippedNoAccount.length)
+      parts.push(
+        `No GeoGami account found for: ${skippedNoAccount.join(
+          ", "
+        )}. Ask them to register first, or check the email.`
+      );
+    if (skippedAlreadyShared.length)
+      parts.push(`Already shared with: ${skippedAlreadyShared.join(", ")}.`);
+    if (!parts.length) parts.push("No changes.");
+
+    // 200 if any email was added, 400 if every email was rejected so the
+    // dashboard shows it as a warning rather than a success.
+    const status = added.length > 0 ? 200 : 400;
+    res.status(status).json({
+      message: parts.join(" "),
       sharedWith: game.sharedWith,
+      added,
+      skippedOwner,
+      skippedNoAccount,
+      skippedAlreadyShared,
     });
   } catch (err) {
     console.error(err);
