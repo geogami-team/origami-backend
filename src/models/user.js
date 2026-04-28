@@ -118,40 +118,33 @@ module.exports.changePassword = function (password, user, callback) {
 };
 
 // return user only if not confirmed yet or already confirmed. Run only when email verification link is used.
-module.exports.confirmEmail = function (id, token) {
+module.exports.confirmEmail = async function (id, token) {
   console.log("confirming user with token", token);
-  return User.findOne({
-    _id: id,
-  })
-    .exec()
-    .then(function (user) {
-      if (!user) {
-        throw new Error("invalid email confirmation token.", {
-          type: "ForbiddenError",
-        });
-      }
+  const user = await User.findOne({ _id: id }).exec();
+  if (!user) {
+    throw new Error("invalid email confirmation token.", { type: "ForbiddenError" });
+  }
 
-      // set email to email address from request
-      // user.set("email", email);
-      // mark user as confirmed
+  // if email is already confirmed
+  if (user.emailIsConfirmed) {
+    return { user, emailIsAlreadyConfirmed: true };
+  }
 
-      // if email is already confirmed
-      if(user.emailIsConfirmed){
-        return {user, emailIsAlreadyConfirmed: true};
-      }
+  // If this confirmation is for an email-change request,
+  // promote unconfirmedEmail to be the user's primary email.
+  if (user.unconfirmedEmail && user.unconfirmedEmail !== user.email) {
+    console.log("🚀 promoting unconfirmedEmail to email:", user.unconfirmedEmail);
+    user.set("email", user.unconfirmedEmail);
+  }
 
-      user.set("emailConfirmationToken", undefined);
-      user.set("emailIsConfirmed", true);
-      user.set("unconfirmedEmail", undefined);
-      
-      return {user: user.save(), emailIsAlreadyConfirmed: false};
+  user.set("emailConfirmationToken", undefined);
+  user.set("emailIsConfirmed", true);
+  user.set("unconfirmedEmail", undefined);
 
-      // User.updateMany({unconfirmedEmail: email}, {unconfirmedEmail: null} ,function(err, users){
-
-      // });
-
-      // return user;
-    });
+  // Await the save so the controller redirect doesn't fire before the DB
+  // update completes.
+  const savedUser = await user.save();
+  return { user: savedUser, emailIsAlreadyConfirmed: false };
 };
 
 module.exports.initPasswordReset = function ({ email }) {
