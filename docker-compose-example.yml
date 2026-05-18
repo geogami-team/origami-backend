@@ -1,0 +1,38 @@
+services:
+  app:
+    image: ghcr.io/geogami-team/origami-backend:master
+    volumes:
+      - ./log:/app/log
+    ports:
+      - 3000:3000
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - MONGO_HOST=${MONGO_HOST}
+      - MONGO_USERNAME=${MONGO_USERNAME}
+      - MONGO_PASSWORD=${MONGO_PASSWORD}
+      - MAIL_SMTP_HOST=${MAIL_SMTP_HOST}
+      - MAIL_SMTP_PORT=${MAIL_SMTP_PORT}
+      - MAIL_SMTP_USERNAME=${MAIL_SMTP_USERNAME}
+      - MAIL_SMTP_PASSWORD=${MAIL_SMTP_PASSWORD}
+      - MAIL_SENDER_ADDRESS=${MAIL_SENDER_ADDRESS}
+      - API_URL=${API_URL}
+      - API_PORT=${API_PORT}
+      - APP_URL=${APP_URL}
+      - APP_PORT=${APP_PORT}
+    restart: always  
+    depends_on:
+      - mongo
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+  mongo:
+    image: mongo:8.2.9
+    volumes:
+      - ./db:/data/db
+      - ./init-mongo-user.js:/docker-entrypoint-initdb.d/init-mongo-user.js:ro
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_INITDB_DATABASE=origami
+    labels:
+      - com.centurylinklabs.watchtower.enable=false
