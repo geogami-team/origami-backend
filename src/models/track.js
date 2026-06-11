@@ -25,9 +25,6 @@ const TrackSchema = new mongoose.Schema({
   events: {
     type: Array,
   },
-  answers: {
-    type: Array,
-  },
   isMultiplayerGame: Boolean,
   numPlayers: Number,
   players: {
