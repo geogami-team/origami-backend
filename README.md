@@ -134,6 +134,8 @@ src/
 
 ## API overview
 
+The complete endpoint documentation — payloads, responses, role requirements, and gotchas — lives in the [REST API Reference](https://github.com/geogami-team/geogami-docs/blob/HEAD/API_REFERENCE.md) in `geogami-docs`. The tables below are a quick summary.
+
 ### Public endpoints
 
 | Method | Path | Description |
