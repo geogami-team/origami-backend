@@ -33,6 +33,21 @@ const TrackSchema = new mongoose.Schema({
   playersCount: {
     type: Number,
   },
+  // Instructor (teacher) whose class QR code this play was started from.
+  // Null for normal plays. When set, the track belongs to the instructor's
+  // dashboard rather than the game creator's. See helpers/classSharing.js.
+  instructor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null,
+  },
+  // Emails of users this individual track has been shared with (per-track
+  // sharing, mirrors Game.sharedWith). Stored as emails — not ObjectIds — so a
+  // track can be shared before the recipient registers.
+  sharedWith: {
+    type: [String],
+    default: [],
+  },
   createdAt: {
     type: Date,
     default: Date.now,

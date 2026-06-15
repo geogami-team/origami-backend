@@ -4,6 +4,7 @@
 const Track = require("../../models/track");
 const Game = require("../../models/game");
 const User = require("../../models/user");
+const { INSTRUCTOR_FEATURE_CUTOFF } = require("../../helpers/classSharing");
 
 const getUserGames = async (req, res) => {
   try {
@@ -13,10 +14,19 @@ const getUserGames = async (req, res) => {
     const userDoc = await User.findById(user._id).select("email");
     const userEmail = userDoc ? userDoc.email.toLowerCase() : "";
 
+    //* 1b. Games where this user is the instructor on at least one (recent)
+    //*     class play. The cutoff keeps this lookup off the historical track
+    //*     backlog — older tracks never carry an instructor.
+    const instructorGameIds = await Track.find({
+      instructor: user._id,
+      createdAt: { $gt: INSTRUCTOR_FEATURE_CUTOFF },
+    }).distinct("game");
+
     //* 2. Get games this user can evaluate:
     //*    - Games they created (user == their _id)   — original behaviour
     //*    - Games shared with them (sharedWith array includes their email)
-    //*    Both still filtered by visibility (isVisible true or not set).
+    //*    - Games where they are an instructor on a class track
+    //*    All still filtered by visibility (isVisible true or not set).
     let userGames = await Game.find({
       $and: [
         {
@@ -29,6 +39,7 @@ const getUserGames = async (req, res) => {
           $or: [
             { user: user._id },
             { sharedWith: userEmail },
+            { _id: { $in: instructorGameIds } },
           ],
         },
       ],
