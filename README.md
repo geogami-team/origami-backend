@@ -155,10 +155,15 @@ The complete endpoint documentation — payloads, responses, role requirements, 
 | GET | `/user/myuser` | Current user profile |
 | POST | `/user/resend-verification` | Self-serve resend (60s cooldown) |
 | POST | `/user/change-mail` | Request an email change (sends link to new address) |
-| GET | `/game/usergames` | Games the user owns **or** had shared with them |
+| GET | `/game/usergames` | Games the user owns, had shared with them, instructs, or has a shared track in |
+| GET | `/game/:id/share` | List the emails a game is shared with |
 | POST | `/game/:id/share` | Grant another user (by email) access to a game's tracks |
 | DELETE | `/game/:id/share` | Revoke access |
-| GET | `/track/gametracks/:id` | Tracks for a game (used by the dashboard) |
+| GET | `/track/gametracks/:id` | Tracks of a game the caller may see (creator / instructor / shared) |
+| GET | `/track/:id` | A single track (owner, instructor, or share recipient) |
+| GET | `/track/:id/share` | List the emails a track is shared with |
+| POST | `/track/:id/share` | Share one track with another user (by email) |
+| DELETE | `/track/:id/share` | Revoke a track share |
 
 ### Admin endpoints (`admin` / `contentAdmin`)
 
@@ -171,6 +176,43 @@ The complete endpoint documentation — payloads, responses, role requirements, 
 | POST | `/user/user/:id/resend-verification` | Resend verification on behalf of a user |
 | POST | `/user/user/:id/trigger-password-reset` | Send reset email to a user |
 | GET | `/user/user/:id/games` | Games created by a user |
+
+### Class sharing (instructor QR) & track access
+
+Logged-in users can show a **Class QR code** for a single-player game (in the
+UI's game-detail page). A student who opens that link/QR plays with data-sharing
+consent locked on, and the resulting track is `POST`ed with the sharing user's id
+as `instructor` (validated against a real user). Such *class tracks* surface in
+the **instructor's** dashboard, not the game creator's.
+
+Who may see a given track is enforced in `getGameTracks` / `getTrack` via the
+shared rule in `helpers/trackAccess.js`:
+
+| Caller | Sees |
+|---|---|
+| admin / contentAdmin | every track |
+| game creator | only non-class tracks (no `instructor`) |
+| game-share colleague (`game.sharedWith`) | only non-class tracks |
+| instructor | only tracks where `instructor` == them |
+| per-track share recipient (`track.sharedWith`) | only tracks shared with them |
+
+`getUserGames` surfaces a game when the caller owns it, has it shared, instructs
+on one of its tracks, or had one of its tracks shared with them — and reports a
+track count scoped to that same rule. Indexes on `Track.instructor` and
+`Track.sharedWith` keep these lookups off the historical backlog. `POST /track`
+(unauthenticated, used by the player app) accepts an optional `instructor` in the
+body and validates it; a per-track `sharedWith` can only be changed through the
+authenticated `/track/:id/share` routes.
+
+**QA matrix** (manual):
+
+| Scenario | Expected |
+|---|---|
+| Creator plays own game | track has no `instructor` → creator sees it |
+| Student plays via class QR | track has `instructor` → only the instructor sees it |
+| Instructor shares one such track with a colleague | colleague sees just that track |
+| Instructor revokes the share | colleague stops seeing it |
+| Tracks created before this feature | still visible to creators as before |
 
 ## Authentication and authorisation
 
