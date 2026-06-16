@@ -58,10 +58,10 @@ const TrackSchema = new mongoose.Schema({
   },
 });
 
-// Index for the instructor (class-sharing) lookups in getUserGames /
-// getGameTracks, so they stay fast on a large track collection without
-// needing a creation-date cutoff. Only post-launch plays carry an instructor,
-// so this filter is already highly selective.
+// Indexes for the class-sharing lookups in getUserGames / getGameTracks, so
+// they stay fast on a large track collection without a creation-date cutoff.
+// `instructor` filters class plays; `sharedWith` filters per-track shares.
 TrackSchema.index({ instructor: 1 });
+TrackSchema.index({ sharedWith: 1 });
 
 module.exports = mongoose.model("Track", TrackSchema);
