@@ -35,7 +35,7 @@ const TrackSchema = new mongoose.Schema({
   },
   // Instructor (teacher) whose class QR code this play was started from.
   // Null for normal plays. When set, the track belongs to the instructor's
-  // dashboard rather than the game creator's. See helpers/classSharing.js.
+  // dashboard rather than the game creator's (see getGameTracks / getTrack).
   instructor: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -57,5 +57,11 @@ const TrackSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
+
+// Index for the instructor (class-sharing) lookups in getUserGames /
+// getGameTracks, so they stay fast on a large track collection without
+// needing a creation-date cutoff. Only post-launch plays carry an instructor,
+// so this filter is already highly selective.
+TrackSchema.index({ instructor: 1 });
 
 module.exports = mongoose.model("Track", TrackSchema);

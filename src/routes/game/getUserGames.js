@@ -4,7 +4,6 @@
 const Track = require("../../models/track");
 const Game = require("../../models/game");
 const User = require("../../models/user");
-const { INSTRUCTOR_FEATURE_CUTOFF } = require("../../helpers/classSharing");
 
 const getUserGames = async (req, res) => {
   try {
@@ -14,12 +13,11 @@ const getUserGames = async (req, res) => {
     const userDoc = await User.findById(user._id).select("email");
     const userEmail = userDoc ? userDoc.email.toLowerCase() : "";
 
-    //* 1b. Games where this user is the instructor on at least one (recent)
-    //*     class play. The cutoff keeps this lookup off the historical track
-    //*     backlog — older tracks never carry an instructor.
+    //* 1b. Games where this user is the instructor on at least one class play.
+    //*     Backed by an index on Track.instructor; only post-launch plays carry
+    //*     an instructor, so this stays selective without a date cutoff.
     const instructorGameIds = await Track.find({
       instructor: user._id,
-      createdAt: { $gt: INSTRUCTOR_FEATURE_CUTOFF },
     }).distinct("game");
 
     //* 2. Get games this user can evaluate:

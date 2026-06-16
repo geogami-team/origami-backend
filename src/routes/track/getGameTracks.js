@@ -1,7 +1,6 @@
 const Track = require("../../models/track");
 const Game = require("../../models/game");
 const User = require("../../models/user");
-const { INSTRUCTOR_FEATURE_CUTOFF } = require("../../helpers/classSharing");
 
 //* Returns the tracks of a game, scoped to what the caller is allowed to see:
 //*   - admin / contentAdmin       -> every track
@@ -51,12 +50,9 @@ const getGameTracksById = async (req, res) => {
         });
       }
       // Instructor branch: self-limiting (only the caller's own class tracks
-      // match) and scoped to the feature window so it never scans old tracks.
-      // Always included — a caller who isn't an instructor here matches nothing.
-      access.push({
-        instructor: req.user._id,
-        createdAt: { $gt: INSTRUCTOR_FEATURE_CUTOFF },
-      });
+      // match), backed by the index on Track.instructor. Always included — a
+      // caller who isn't an instructor here simply matches nothing.
+      access.push({ instructor: req.user._id });
 
       filter = { $and: [baseFilter, { $or: access }] };
     }
