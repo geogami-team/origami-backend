@@ -6,7 +6,7 @@ const Game = require("../../models/game");
 const User = require("../../models/user");
 
 //* Returns a single track, but only to callers allowed to see it:
-//*   - admin / contentAdmin
+//*   - admin (full admin only)
 //*   - the track's instructor (class play)
 //*   - someone the track was directly shared with (track.sharedWith)
 //*   - for non-class tracks only: the game creator, or a colleague the game
@@ -24,9 +24,9 @@ const getTrack = async (req, res) => {
     const userDoc = await User.findById(req.user._id).select("email roles");
     const callerId = req.user._id.toString();
     const callerEmail = userDoc ? userDoc.email.toLowerCase() : "";
-    const isAdmin =
-      userDoc &&
-      userDoc.roles.some((r) => ["admin", "contentAdmin"].includes(r));
+    // Only a full `admin` sees every track — contentAdmin is filtered like any
+    // other caller (creator / instructor / share recipient).
+    const isAdmin = userDoc && userDoc.roles.includes("admin");
 
     const isInstructor =
       track.instructor && track.instructor.toString() === callerId;

@@ -190,7 +190,7 @@ shared rule in `helpers/trackAccess.js`:
 
 | Caller | Sees |
 |---|---|
-| admin / contentAdmin | every track |
+| admin | every track |
 | game creator | only non-class tracks (no `instructor`) |
 | game-share colleague (`game.sharedWith`) | only non-class tracks |
 | instructor | only tracks where `instructor` == them |

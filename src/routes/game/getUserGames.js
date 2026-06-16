@@ -13,9 +13,9 @@ const getUserGames = async (req, res) => {
     let user = req.user;
     const userDoc = await User.findById(user._id).select("email roles");
     const userEmail = userDoc ? userDoc.email.toLowerCase() : "";
-    const isAdmin =
-      userDoc &&
-      userDoc.roles.some((r) => ["admin", "contentAdmin"].includes(r));
+    // Only a full `admin` sees every track — contentAdmin is filtered like any
+    // other caller (creator / instructor / share recipient).
+    const isAdmin = userDoc && userDoc.roles.includes("admin");
     const caller = { id: user._id, email: userEmail, isAdmin };
 
     //* 1b. Games where this user is the instructor on at least one class play.

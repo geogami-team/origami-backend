@@ -6,7 +6,7 @@
  * count) so the two can never drift.
  *
  * Access rule:
- *   - admin / contentAdmin        -> every track
+ *   - admin (full admin only)     -> every track
  *   - game creator                -> only non-class tracks (no instructor)
  *   - colleague (game.sharedWith) -> only non-class tracks (same as creator)
  *   - instructor                  -> only tracks where they are the instructor

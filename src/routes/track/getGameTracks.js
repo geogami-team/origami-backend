@@ -16,9 +16,9 @@ const getGameTracksById = async (req, res) => {
     }
 
     const userDoc = await User.findById(req.user._id).select("email roles");
-    const isAdmin =
-      userDoc &&
-      userDoc.roles.some((r) => ["admin", "contentAdmin"].includes(r));
+    // Only a full `admin` sees every track — contentAdmin is filtered like any
+    // other caller (creator / instructor / share recipient).
+    const isAdmin = userDoc && userDoc.roles.includes("admin");
 
     const filter = buildTrackAccessFilter(game, {
       id: req.user._id,
