@@ -19,7 +19,7 @@ const User = require("../../models/user");
  * Permission guard shared by all three handlers.
  *
  * Loads the track, resolves its owner (instructor, else game creator) and
- * checks the authenticated caller is that owner or an admin/contentAdmin.
+ * checks the authenticated caller is that owner or a full admin.
  * Returns { track, ownerEmail } on success or { error, status } on failure.
  */
 async function assertCanManageTrackSharing(req) {
@@ -28,8 +28,9 @@ async function assertCanManageTrackSharing(req) {
 
   const callerId = req.user._id.toString();
   const caller = await User.findById(req.user._id).select("roles");
-  const isAdmin =
-    caller && caller.roles.some((r) => ["admin", "contentAdmin"].includes(r));
+  // Only a full `admin` may manage sharing for tracks they don't own —
+  // contentAdmin is treated like any other user (owner-based access only).
+  const isAdmin = caller && caller.roles.includes("admin");
 
   // Resolve the owning user id: instructor for class plays, otherwise the
   // creator of the track's game.

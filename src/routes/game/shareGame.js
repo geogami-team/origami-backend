@@ -3,7 +3,7 @@
  *
  * Routes for managing per-game track-sharing.
  *
- * The game creator (or an admin/contentAdmin) can grant other GeoGami users
+ * The game creator (or a full admin) can grant other GeoGami users
  * access to view the tracks of a specific game by adding their email addresses
  * to the game's `sharedWith` array.
  *
@@ -19,7 +19,7 @@ const User = require("../../models/user");
  * Permission guard shared by all three handlers.
  *
  * Loads the game by :id, then checks whether the authenticated user is either
- * the game owner or has an admin/contentAdmin role. Returns { game } on
+ * the game owner or has the (full) admin role. Returns { game } on
  * success or { error, status } on failure.
  */
 async function assertCanManageSharing(req) {
@@ -30,9 +30,9 @@ async function assertCanManageSharing(req) {
   const isOwner = game.user.toString() === userId;
 
   const user = await User.findById(req.user._id);
-  const isAdmin =
-    user &&
-    user.roles.some((r) => ["admin", "contentAdmin"].includes(r));
+  // Only a full `admin` may manage sharing for games they don't own —
+  // contentAdmin is treated like any other user (owner-based access only).
+  const isAdmin = user && user.roles.includes("admin");
 
   if (!isOwner && !isAdmin) {
     return { error: "Only the game creator or an admin can manage sharing.", status: 403 };
