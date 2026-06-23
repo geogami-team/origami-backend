@@ -48,6 +48,16 @@ const TrackSchema = new mongoose.Schema({
     type: [String],
     default: [],
   },
+  // Event this play was collected for. Set (alongside `instructor`) when the
+  // play was started from an event QR code; null for normal plays. `instructor`
+  // records who the track belongs to; `event` records which study it belongs to
+  // — so the dashboard can scope tracks to a single event even when the same
+  // game appears in several of the owner's events.
+  event: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Event",
+    default: null,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -63,5 +73,7 @@ const TrackSchema = new mongoose.Schema({
 // `instructor` filters class plays; `sharedWith` filters per-track shares.
 TrackSchema.index({ instructor: 1 });
 TrackSchema.index({ sharedWith: 1 });
+// Backs the dashboard's event-scoped track query (game + event).
+TrackSchema.index({ event: 1 });
 
 module.exports = mongoose.model("Track", TrackSchema);

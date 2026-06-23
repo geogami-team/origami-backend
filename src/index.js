@@ -12,7 +12,7 @@ const passport = require("passport");
 const cookieparser = require("cookie-parser");
 
 // needed only for testing backend database locally (check docs for further details)
-// require("dotenv").config();
+require("dotenv").config();
 
 const accessLogStream = rfs("access.log", {
   interval: "1d", // rotate daily
@@ -74,12 +74,14 @@ app.get("/", (req, res) => {
 
 const gameRouter = require("./routes/game");
 const trackRouter = require("./routes/track");
+const eventRouter = require("./routes/event");
 const fileRouter = require("./routes/file");
 const userRouter = require("./routes/user");
 const AppVersionRouter = require("./routes/appversion");
 
 app.use("/game", gameRouter);
 app.use("/track", trackRouter);
+app.use("/event", eventRouter);
 app.use("/file", fileRouter);
 app.use("/user", userRouter);
 app.use("/appversion", AppVersionRouter);
