@@ -18,14 +18,21 @@ const getUserEvents = async (req, res) => {
       $or: [{ user: req.user._id }, { sharedWith: userEmail }],
     })
       .populate("games", "name place user isMultiplayerGame isVRWorld virEnvType")
+      // Owner name is needed for the event PDF (QR instructor label + header) so
+      // a shared co-editor can export without a second lookup.
+      .populate("user", "name username")
       .sort({ updatedAt: -1 });
 
     // Flag ownership so the UI can hide owner-only actions (delete / share) for
-    // shared co-editors without a second round-trip.
-    const content = events.map((ev) => ({
-      ...ev.toObject(),
-      isOwner: ev.user.equals(req.user._id),
-    }));
+    // shared co-editors without a second round-trip. Compare by id string since
+    // `user` is now a populated document.
+    const content = events.map((ev) => {
+      const obj = ev.toObject();
+      return {
+        ...obj,
+        isOwner: String(obj.user?._id) === String(req.user._id),
+      };
+    });
 
     return res.status(200).send({
       message: "Events found successfully.",
