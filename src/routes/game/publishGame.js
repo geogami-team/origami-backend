@@ -13,7 +13,8 @@ const publishGame = async (req, res) => {
     }
 
     const userCalling = await User.findOne({ _id: req.user._id });
-    const rolesWithGameAccess = ["admin", "contentAdmin"];
+    // Only a full admin (not contentAdmin) may publish/unpublish others' games.
+    const rolesWithGameAccess = ["admin"];
     const isOwner = gameToUpdate.user.equals(userCalling._id);
     const isAdmin = rolesWithGameAccess.some((role) =>
       userCalling.roles.includes(role)

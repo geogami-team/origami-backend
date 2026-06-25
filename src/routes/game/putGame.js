@@ -9,8 +9,9 @@ const putGame = async (req, res) => {
     const gameToUpdate = await Game.findOne({ _id: req.body._id });
     // console.log(gameToUpdate);
     const userCalling = await User.findOne({ _id: req.user._id });
-    const rolesWithGameAccess = ["admin", "contentAdmin"];
-    // user is owner of the game or is admin / contentAdmin
+    // Only a full admin (not contentAdmin) may edit games they don't own.
+    const rolesWithGameAccess = ["admin"];
+    // user is owner of the game or is admin
     if (
       gameToUpdate.user.equals(userCalling._id) ||
       rolesWithGameAccess.some((role) => userCalling.roles.includes(role))
