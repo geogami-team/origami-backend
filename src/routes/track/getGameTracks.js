@@ -18,7 +18,7 @@ const getGameTracksById = async (req, res) => {
     const gameId = req.params.id;
     const { eventId } = req.query;
 
-    const game = await Game.findById(gameId).select("user sharedWith");
+    const game = await Game.findById(gameId).select("user sharedWith editors");
     if (!game) {
       return res.status(404).send({ message: "Game not found." });
     }

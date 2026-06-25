@@ -30,7 +30,11 @@ const GameSchema = new mongoose.Schema(
     isVRMirrored: Boolean,
     virEnvType: String,
     isVisible: Boolean,
-    isCuratedGame: Boolean,
+    // Publish state (replaces the old admin-only isCuratedGame flag).
+    // Created games are explicit drafts (isPublished: false). Legacy games
+    // have no field at all — those are treated as published at query time
+    // (same convention as isVisible), so no migration is needed.
+    isPublished: Boolean,
     disableShareData: Boolean,
     skipTaskPin: String,
     coords: Array,
@@ -39,6 +43,13 @@ const GameSchema = new mongoose.Schema(
     // Stored as emails (not ObjectIds) so the creator can share before the
     // recipient has an account — the lookup happens at query time.
     sharedWith: {
+      type: [String],
+      default: [],
+    },
+    // Emails of co-authors who may edit and publish this game (collaborative
+    // authoring). Editors also get track access (treated like sharedWith).
+    // They cannot delete the game or manage the editor list themselves.
+    editors: {
       type: [String],
       default: [],
     },
