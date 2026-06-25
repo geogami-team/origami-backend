@@ -9,20 +9,25 @@ const User = require("../../models/user");
 
 const getDraftGames = async (req, res) => {
   try {
-    const userDoc = await User.findById(req.user._id).select("roles");
+    const userDoc = await User.findById(req.user._id).select("roles email");
     const isAdmin =
       userDoc &&
       (userDoc.roles.includes("admin") ||
         userDoc.roles.includes("contentAdmin"));
+    const userEmail = userDoc ? (userDoc.email || "").toLowerCase() : "";
 
     const visibleFilter = {
       $or: [{ isVisible: { $eq: true } }, { isVisible: { $exists: false } }],
     };
     const draftFilter = { isPublished: { $eq: false } };
+    // Non-admins see their own drafts plus drafts they co-author (editors).
+    const ownOrEditor = {
+      $or: [{ user: req.user._id }, { editors: userEmail }],
+    };
 
     const query = isAdmin
       ? { $and: [visibleFilter, draftFilter] }
-      : { $and: [visibleFilter, draftFilter, { user: req.user._id }] };
+      : { $and: [visibleFilter, draftFilter, ownOrEditor] };
 
     const result = await Game.find(query)
       .select("name")
@@ -30,6 +35,7 @@ const getDraftGames = async (req, res) => {
       .select("user")
       .select("isVRWorld")
       .select("isPublished")
+      .select("editors")
       .select("isMultiplayerGame")
       .select("numPlayers")
       .select("tasksCount");

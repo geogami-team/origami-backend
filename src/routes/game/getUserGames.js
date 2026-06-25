@@ -51,6 +51,7 @@ const getUserGames = async (req, res) => {
           $or: [
             { user: user._id },
             { sharedWith: userEmail },
+            { editors: userEmail },
             { _id: { $in: instructorGameIds } },
             { _id: { $in: trackSharedGameIds } },
           ],
@@ -62,9 +63,11 @@ const getUserGames = async (req, res) => {
       .select("isVRWorld")
       .select("isMultiplayerGame")
       .select("virEnvType")
-      //* user + sharedWith are needed to scope the per-game track count below.
+      //* user + sharedWith + editors are needed to scope the per-game track
+      //* count below (buildTrackAccessFilter reads all three).
       .select("user")
-      .select("sharedWith");
+      .select("sharedWith")
+      .select("editors");
 
     //*3.  Keep only games that have tracks the caller may actually see, and set
     //*    tracksCount to that visible count (same rule as getGameTracks, via the

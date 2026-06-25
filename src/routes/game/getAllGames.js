@@ -29,6 +29,7 @@ const getAllGames = async (req, res) => {
           .select("user")
           .select("isVRWorld")
           .select("isPublished")
+          .select("editors")
           .select("isMultiplayerGame")
           .select("numPlayers")
           .select("tasksCount");

@@ -17,6 +17,7 @@ const { putGame } = require("./putGame");
 const { publishGame } = require("./publishGame");
 const {deleteGame} = require("./deleteGame")
 const { shareGame, unshareGame, getGameSharedWith } = require("./shareGame")
+const { shareGameEditor, unshareGameEditor, getGameEditors } = require("./shareGameEditor")
 
 GameRouter.route("/all").get(getAllGames);
 GameRouter.route("/allmultiplayer").get(getAllMultiplayerGames);
@@ -81,6 +82,21 @@ GameRouter.route("/:id/share").delete(
 GameRouter.route("/:id/share").get(
   passport.authenticate("jwt", { session: false }),
   getGameSharedWith
+);
+
+// Co-author (editor) management — add / remove / list. Owner or admin only.
+// Must be registered BEFORE the wildcard /:id route.
+GameRouter.route("/:id/editors").post(
+  passport.authenticate("jwt", { session: false }),
+  shareGameEditor
+);
+GameRouter.route("/:id/editors").delete(
+  passport.authenticate("jwt", { session: false }),
+  unshareGameEditor
+);
+GameRouter.route("/:id/editors").get(
+  passport.authenticate("jwt", { session: false }),
+  getGameEditors
 );
 
 // Get game by id — wildcard route, must come LAST to avoid

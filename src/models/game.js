@@ -46,6 +46,13 @@ const GameSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    // Emails of co-authors who may edit and publish this game (collaborative
+    // authoring). Editors also get track access (treated like sharedWith).
+    // They cannot delete the game or manage the editor list themselves.
+    editors: {
+      type: [String],
+      default: [],
+    },
   },
   { timestamps: true }
 );

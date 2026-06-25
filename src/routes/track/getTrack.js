@@ -38,13 +38,16 @@ const getTrack = async (req, res) => {
 
     // Non-class track: fall back to game-level access (creator + game share).
     if (!allowed && !track.instructor) {
-      const game = await Game.findById(track.game).select("user sharedWith");
+      const game = await Game.findById(track.game).select("user sharedWith editors");
       if (game) {
         const isCreator = game.user.toString() === callerId;
         const isGameShared = (game.sharedWith || [])
           .map((e) => e.toLowerCase())
           .includes(callerEmail);
-        allowed = isCreator || isGameShared;
+        const isEditor = (game.editors || [])
+          .map((e) => e.toLowerCase())
+          .includes(callerEmail);
+        allowed = isCreator || isGameShared || isEditor;
       }
     }
 

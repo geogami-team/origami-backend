@@ -40,10 +40,14 @@ function buildTrackAccessFilter(game, caller) {
   const isGameShared = (game.sharedWith || [])
     .map((e) => e.toLowerCase())
     .includes(caller.email);
+  // Co-authors (editors) get the same track access as the creator/colleague.
+  const isEditor = (game.editors || [])
+    .map((e) => e.toLowerCase())
+    .includes(caller.email);
 
   // Each branch the caller qualifies for adds a group of visible tracks.
   const access = [];
-  if (isCreator || isGameShared) {
+  if (isCreator || isGameShared || isEditor) {
     // Non-class tracks only.
     access.push({
       $or: [{ instructor: null }, { instructor: { $exists: false } }],

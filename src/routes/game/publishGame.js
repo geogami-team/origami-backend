@@ -19,8 +19,13 @@ const publishGame = async (req, res) => {
     const isAdmin = rolesWithGameAccess.some((role) =>
       userCalling.roles.includes(role)
     );
+    // Co-authors (editors) may also publish/unpublish, matched by email.
+    const callerEmail = (userCalling.email || "").toLowerCase();
+    const isEditor = (gameToUpdate.editors || [])
+      .map((e) => e.toLowerCase())
+      .includes(callerEmail);
 
-    if (!isOwner && !isAdmin) {
+    if (!isOwner && !isAdmin && !isEditor) {
       return res.status(405).send({ message: "Unauthorized" });
     }
 
