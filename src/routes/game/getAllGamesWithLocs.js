@@ -1,12 +1,16 @@
-//* This route is used in games map view. 
-//* Only retrieve curated game that has at least one nav task
+//* This route is used in games map view.
+//* Only retrieve published games that have at least one nav task
 
 const Game = require("../../models/game");
 
 const getAllGamesWithLocs = async (req, res) => {
   try {
     let result = await Game.find({
-      $or: [{ isVisible: { $eq: true } }, { isVisible: { $exists: false } }],
+      $and: [
+        { $or: [{ isVisible: { $eq: true } }, { isVisible: { $exists: false } }] },
+        // published == true OR no field (legacy). Drafts (false) are excluded.
+        { $or: [{ isPublished: { $eq: true } }, { isPublished: { $exists: false } }] },
+      ],
     }).select("-user");
 
     // Temporarily update for public users
@@ -36,7 +40,7 @@ const getAllGamesWithLocs = async (req, res) => {
         //console.log("index: ", index)
         for (let task of item.tasks) {
           counter += 1;
-          if (item.isCuratedGame == true && item.isVRWorld != true) {
+          if (item.isVRWorld != true) {
             if (
               (task.category == "nav") &
               (task.answer.position != undefined)

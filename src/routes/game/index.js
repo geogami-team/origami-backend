@@ -11,8 +11,10 @@ const { getAllMultiplayerGames } = require("./getAllMultiplayerGames");
 const { getAllGamesWithLocs } = require("./getAllGamesWithLocs");
 //* Used in evaluate page
 const { getUserGames } = require("./getUserGames");
+const { getDraftGames } = require("./getDraftGames");
 const { postGame } = require("./postGame");
 const { putGame } = require("./putGame");
+const { publishGame } = require("./publishGame");
 const {deleteGame} = require("./deleteGame")
 const { shareGame, unshareGame, getGameSharedWith } = require("./shareGame")
 
@@ -30,6 +32,12 @@ GameRouter.route("/usergames").get(
   ]),
   getUserGames
 );
+//* Draft (unpublished) games: admin/contentAdmin see all, others see their own.
+//* Any authenticated user may call it (own drafts are scoped in the handler).
+GameRouter.route("/drafts").get(
+  passport.authenticate("jwt", { session: false }),
+  getDraftGames
+);
 // Create new game
 GameRouter.route("/").post(
   passport.authenticate("jwt", { session: false }),
@@ -44,6 +52,13 @@ GameRouter.route("/").put(
 GameRouter.route("/delete/:id").put(
   passport.authenticate("jwt", { session: false }),
   deleteGame
+);
+
+// Publish / unpublish a game (creator or admin/contentAdmin). Must be
+// registered BEFORE the wildcard /:id route.
+GameRouter.route("/:id/publish").put(
+  passport.authenticate("jwt", { session: false }),
+  publishGame
 );
 
 // Share routes must be registered BEFORE the wildcard /:id route,

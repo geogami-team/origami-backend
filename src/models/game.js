@@ -30,7 +30,11 @@ const GameSchema = new mongoose.Schema(
     isVRMirrored: Boolean,
     virEnvType: String,
     isVisible: Boolean,
-    isCuratedGame: Boolean,
+    // Publish state (replaces the old admin-only isCuratedGame flag).
+    // Created games are explicit drafts (isPublished: false). Legacy games
+    // have no field at all — those are treated as published at query time
+    // (same convention as isVisible), so no migration is needed.
+    isPublished: Boolean,
     disableShareData: Boolean,
     skipTaskPin: String,
     coords: Array,

@@ -16,6 +16,13 @@ const getAllMultiplayerGames = async (req, res) => {
               { isVisible: { $exists: false } },
             ],
           },
+          // published == true OR no field (legacy). Drafts (false) are excluded.
+          {
+            $or: [
+              { isPublished: { $eq: true } },
+              { isPublished: { $exists: false } },
+            ],
+          },
           {
             isMultiplayerGame: { $eq: true },
           },
@@ -25,7 +32,7 @@ const getAllMultiplayerGames = async (req, res) => {
         .select("place")
         .select("user")
         .select("isVRWorld")
-        .select("isCuratedGame");
+        .select("isPublished");
 
       // console.log("minimal result", result);
       return res.status(200).send({
