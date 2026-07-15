@@ -1,6 +1,6 @@
 //* Publish / unpublish a single game. Lightweight toggle used from the game
 //* list, so it only touches isPublished (no full game payload needed).
-//* Allowed for the game creator, or admin / contentAdmin (same rule as putGame).
+//* Allowed for the game creator, a co-author (editor), or admin / contentAdmin.
 
 const Game = require("../../models/game");
 const User = require("../../models/user");
@@ -13,8 +13,8 @@ const publishGame = async (req, res) => {
     }
 
     const userCalling = await User.findOne({ _id: req.user._id });
-    // Only a full admin (not contentAdmin) may publish/unpublish others' games.
-    const rolesWithGameAccess = ["admin"];
+    // admin and contentAdmin may publish/unpublish any game (content moderation).
+    const rolesWithGameAccess = ["admin", "contentAdmin"];
     const isOwner = gameToUpdate.user.equals(userCalling._id);
     const isAdmin = rolesWithGameAccess.some((role) =>
       userCalling.roles.includes(role)

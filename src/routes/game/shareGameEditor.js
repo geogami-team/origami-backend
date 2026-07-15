@@ -3,7 +3,7 @@
  *
  * Routes for managing per-game co-authors (editors).
  *
- * The game creator (or a full admin) can grant other GeoGami users the right
+ * The game creator (or an admin / contentAdmin) can grant other GeoGami users the right
  * to EDIT and PUBLISH a game by adding their email to the game's `editors`
  * array. Editors also implicitly get track access (see helpers/trackAccess.js
  * and getUserGames). Editors cannot delete the game or manage the editor list.
@@ -15,8 +15,8 @@
 const Game = require("../../models/game");
 const User = require("../../models/user");
 
-// Only the game owner or a full admin may manage the editor list. (An editor
-// cannot add further editors — that would be privilege escalation.)
+// Only the game owner, an admin, or a contentAdmin may manage the editor list.
+// (An editor cannot add further editors — that would be privilege escalation.)
 async function assertCanManageEditors(req) {
   const game = await Game.findById(req.params.id);
   if (!game) return { error: "Game not found", status: 404 };
@@ -24,7 +24,9 @@ async function assertCanManageEditors(req) {
   const userId = req.user._id.toString();
   const isOwner = game.user.toString() === userId;
   const user = await User.findById(req.user._id);
-  const isAdmin = user && user.roles.includes("admin");
+  const isAdmin =
+    user &&
+    (user.roles.includes("admin") || user.roles.includes("contentAdmin"));
 
   if (!isOwner && !isAdmin) {
     return {
@@ -133,7 +135,7 @@ const unshareGameEditor = async (req, res) => {
 };
 
 /**
- * GET /game/:id/editors — current co-author emails (owner or admin only).
+ * GET /game/:id/editors — current co-author emails (owner or admin/contentAdmin only).
  */
 const getGameEditors = async (req, res) => {
   try {
