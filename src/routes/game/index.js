@@ -18,6 +18,7 @@ const { publishGame } = require("./publishGame");
 const {deleteGame} = require("./deleteGame")
 const { shareGame, unshareGame, getGameSharedWith } = require("./shareGame")
 const { shareGameEditor, unshareGameEditor, getGameEditors } = require("./shareGameEditor")
+const { getGameCreator } = require("./getGameCreator")
 
 GameRouter.route("/all").get(getAllGames);
 GameRouter.route("/allmultiplayer").get(getAllMultiplayerGames);
@@ -97,6 +98,15 @@ GameRouter.route("/:id/editors").delete(
 GameRouter.route("/:id/editors").get(
   passport.authenticate("jwt", { session: false }),
   getGameEditors
+);
+
+// Who created a game and when — admin-only, fetched lazily by the
+// creator-info modal on the game list. Must be registered BEFORE the
+// wildcard /:id route.
+GameRouter.route("/:id/creator").get(
+  passport.authenticate("jwt", { session: false }),
+  AuthController.roleAuthorization(["admin"]),
+  getGameCreator
 );
 
 // Get game by id — wildcard route, must come LAST to avoid
