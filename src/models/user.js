@@ -61,6 +61,46 @@ const UserSchema = mongoose.Schema(
   { timestamps: true }
 );
 
+// Only these fields are ever safe to serialize into an API response. We use an
+// allowlist rather than deleting known secrets, because a denylist leaks
+// anything it doesn't explicitly name — including legacy fields still present
+// in old documents (e.g. the pre-array singular `refreshToken`, orphaned when
+// auth moved to the `refreshTokens` array) and any field added to the schema
+// later. Everything omitted here — password hash, refresh tokens (live bearer
+// credentials: leaking them allows session hijacking via /user/refresh-auth),
+// and the password-reset / email-confirmation tokens — never leaves the server.
+//
+// Applied to BOTH toJSON and toObject: every res.json(user) / res.send({ user })
+// runs through toJSON (incl. nested/populated docs), and the .toObject() paths
+// (e.g. updateProfile) would otherwise bypass it. Internal logic (checkPassword,
+// token rotation, JWT creation) reads fields off the document directly, not via
+// these transforms, so it is unaffected.
+const PUBLIC_USER_FIELDS = [
+  "_id",
+  "name",
+  "username",
+  "email",
+  "roles",
+  "language",
+  "unconfirmedEmail",
+  "emailIsConfirmed",
+  "createdAt",
+  "updatedAt",
+];
+
+function sanitizeUser(doc, ret) {
+  const safe = {};
+  for (const key of PUBLIC_USER_FIELDS) {
+    if (ret[key] !== undefined) {
+      safe[key] = ret[key];
+    }
+  }
+  return safe;
+}
+
+UserSchema.set("toJSON", { transform: sanitizeUser });
+UserSchema.set("toObject", { transform: sanitizeUser });
+
 UserSchema.methods.mail = function mail(template, data) {
   //   return mails.sendMail(template, this, data);
 };
