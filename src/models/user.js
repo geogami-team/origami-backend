@@ -43,9 +43,13 @@ const UserSchema = mongoose.Schema(
       default: ["user"],
       enum: ["user", "contentAdmin", "trackAccess", "admin", "scholar"],
     },
+    // Two-letter code matching the client's i18n files (de, en, pt, fr, ar).
+    // Set from the app language selected at registration; editable on the
+    // profile page. Legacy documents may still hold locale-style values
+    // ("de_DE"), so readers should compare on the first two letters.
     language: {
       type: String,
-      default: "de_DE", // update this to be based on user language
+      default: "de",
     },
     resetPasswordToken: { type: String },
     resetPasswordExpires: { type: Date },

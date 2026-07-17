@@ -6,6 +6,11 @@ const { v4: uuidv4 } = require("uuid");
 var User = require("../models/user");
 var validator = require('validator');   // To validate received email
 
+// Language codes the client app ships translations for (see
+// geogami-ui/src/assets/i18n). Used to validate the language a user selects
+// at registration or on the profile page.
+const SUPPORTED_LANGUAGES = ["de", "en", "pt", "fr", "ar"];
+
 const {
   createToken,
   refreshJwt,
@@ -302,58 +307,69 @@ module.exports.changePassword = async function changePassword(req, res, next) {
   });
 };
 
-module.exports.updateProfile = function updateProfile(req, res, next) {
-  if (!req.user.roles.includes("admin") && !req.user.roles.includes("user")) {
-    res.json({
-      success: false,
-      msg: "You are not authorized to edit this content",
-    });
-  } else if (req.body._id == req.user._id) {
-    User.findOneAndUpdate(
-      { _id: req.body._id },
-      _.pick(req.body, function (value, key) {
-        if (userParams.indexOf(key) != -1) {
-          return true;
-        }
-      }),
-      { new: true },
-      function (err, user) {
-        if (err) {
-          console.info(err);
-          res.json({ success: false, msg: "Could not update profile." });
-        }
+// Self-serve profile update. Only the display name and the default language
+// may be changed here — username/email/password/roles all have their own
+// dedicated, validated flows. Always operates on the authenticated user
+// (req.user), never on an id from the request body.
+module.exports.updateProfile = async function updateProfile(req, res, next) {
+  try {
+    const update = {};
 
-        console.info("%s  just updated Profile, id: %s", user.email, user._id);
-        res.json({
-          success: true,
-          user: _.omit(user.toObject(), "password", "__v"),
-        });
+    if (req.body.name !== undefined) {
+      if (typeof req.body.name !== "string" || req.body.name.length > 80) {
+        return res.status(400).json({ success: false, msg: "Invalid name." });
       }
-    );
-  } else {
-    res.status(401).json({
-      error: "You are not authorized to edit th {new: true}is content",
+      update.name = req.body.name.trim();
+    }
+
+    if (req.body.language !== undefined) {
+      if (!SUPPORTED_LANGUAGES.includes(req.body.language)) {
+        return res
+          .status(400)
+          .json({ success: false, msg: "Unsupported language." });
+      }
+      update.language = req.body.language;
+    }
+
+    if (Object.keys(update).length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, msg: "Nothing to update." });
+    }
+
+    const user = await User.findOneAndUpdate({ _id: req.user._id }, update, {
+      new: true,
+      runValidators: true,
     });
+    if (!user) {
+      return res.status(404).json({ success: false, msg: "User not found." });
+    }
+
+    console.info("%s  just updated Profile, id: %s", user.email, user._id);
+    // toObject() runs the model's sanitizing transform (public fields only).
+    return res.json({ success: true, user: user.toObject() });
+  } catch (err) {
+    console.info(err);
+    return res
+      .status(500)
+      .json({ success: false, msg: "Could not update profile." });
   }
 };
 
 module.exports.myUser = function myUser(req, res, next) {
   passport.authenticate("jwt", function (err, user, info) {
     if (user) {
-      //   req.body.user = user._id;
-      User.findOne({ _id: user._id }).exec(function (err, userData) {
-        // console.log(userData);
-        res.json({
-          success: true,
-          user: {
-            _id: userData._id,
-            name: userData.name,
-            username: userData.username,
-            email: userData.email,
-            roles: userData.roles,
-          },
-        });
-      });
+      User.findOne({ _id: user._id })
+        .exec()
+        .then((userData) => {
+          if (!userData) {
+            return res.json({ success: false });
+          }
+          // res.json serializes through the model's toJSON transform, which
+          // strips everything but the public fields (incl. language).
+          res.json({ success: true, user: userData });
+        })
+        .catch((e) => next(e));
     } else {
       res.json({ success: false });
     }
@@ -367,6 +383,11 @@ module.exports.register = function register(req, res, next) {
     unconfirmedEmail: req.body.email,
     username: req.body.username,
     password: req.body.password,
+    // Store the app language the user had selected while registering, so
+    // the account keeps their language as its default.
+    language: SUPPORTED_LANGUAGES.includes(req.body.language)
+      ? req.body.language
+      : undefined, // undefined -> schema default
   });
 
   // CAREFUL HARDCODED Email-Validator
