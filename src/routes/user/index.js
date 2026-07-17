@@ -6,6 +6,7 @@ const User = require("../../models/user");
 const Game = require("../../models/game");
 var AuthController = require("../../controllers/authController");
 const { v4: uuidv4 } = require("uuid");
+const validator = require("validator");
 const { verifyUserRegistration } = require("../../controllers/mailController");
 
 // Secrets that must never leave the DB layer on read endpoints. The User
@@ -154,18 +155,32 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   AuthController.roleAuthorization(["admin", "contentAdmin"]),
   function (req, res, next) {
-    // NOTE: this route stores the password unhashed (no pre-save hook) —
-    // known bug, tracked separately (issue #15 in issues-to-create.md).
-    User.create(
-      pickUserFields(req.body, [
-        "username",
-        "email",
-        "password",
-        "name",
-        "language",
-        "roles",
-      ])
-    )
+    const fields = pickUserFields(req.body, [
+      "username",
+      "email",
+      "password",
+      "name",
+      "language",
+      "roles",
+    ]);
+
+    // Mirror the self-registration validation. The password is hashed by the
+    // User pre-save hook, so we only validate its strength here.
+    if (!fields.email || !validator.isEmail(fields.email)) {
+      return res.status(400).json({ message: "Invalid email." });
+    }
+    if (!fields.username || fields.username.length < 5) {
+      return res
+        .status(400)
+        .json({ message: "Username must be at least 5 characters." });
+    }
+    if (!fields.password || fields.password.length < 8) {
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 8 characters." });
+    }
+
+    User.create(fields)
       .then((post) => res.json(post))
       .catch((err) => next(err));
   }

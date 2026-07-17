@@ -101,6 +101,19 @@ function sanitizeUser(doc, ret) {
 UserSchema.set("toJSON", { transform: sanitizeUser });
 UserSchema.set("toObject", { transform: sanitizeUser });
 
+// Single source of password hashing: any save with a changed password field is
+// bcrypt-hashed here, so no write path (self-registration, admin create,
+// password change, reset) can persist a plaintext password. Guarded by
+// isModified so ordinary saves — email confirmation, refresh-token rotation,
+// reset-token issuance — never re-hash the already-hashed value.
+UserSchema.pre("save", async function () {
+  if (!this.isModified("password")) {
+    return;
+  }
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+});
+
 UserSchema.methods.mail = function mail(template, data) {
   //   return mails.sendMail(template, this, data);
 };
@@ -131,13 +144,11 @@ module.exports.getUserByUsername = function (username, callback) {
 };
 
 module.exports.addUser = function (newUser, callback) {
-  bcrypt.genSalt(10, (err, salt) => {
-    bcrypt.hash(newUser.password, salt, (err, hash) => {
-      if (err) throw err;
-      newUser.password = hash;
-      newUser.save().then(data => callback(null, data)).catch(err => callback(err, null))
-    });
-  });
+  // Hashing is handled by the pre-save hook.
+  newUser
+    .save()
+    .then((data) => callback(null, data))
+    .catch((err) => callback(err, null));
 };
 
 module.exports.comparePassword = function (password, hash, callback) {
@@ -148,13 +159,9 @@ module.exports.comparePassword = function (password, hash, callback) {
 };
 
 module.exports.changePassword = function (password, user, callback) {
-  bcrypt.genSalt(10, (err, salt) => {
-    bcrypt.hash(password, salt, (err, hash) => {
-      if (err) throw err;
-      user.password = hash;
-      user.save().then(callback);
-    });
-  });
+  // Assign the plaintext; the pre-save hook hashes it on save.
+  user.password = password;
+  user.save().then(callback);
 };
 
 // return user only if not confirmed yet or already confirmed. Run only when email verification link is used.
@@ -246,15 +253,11 @@ module.exports.resetPassword = function resetPassword(password, email, verificat
       user.resetPasswordToken = "";
       user.resetPasswordExpires = Date.now();
 
-      // update password
-      //-- ToDo
-      bcrypt.genSalt(10, (err, salt) => {
-        bcrypt.hash(password, salt, (err, hash) => {
-          if (err) throw err;
-          user.password = hash;
-          return user.save();
-        });
-      });
+      // Assign the plaintext; the pre-save hook hashes it on save. Returning the
+      // save promise makes the caller await completion — the previous
+      // nested-callback version resolved before the save actually finished.
+      user.password = password;
+      return user.save();
     });
 };
 
