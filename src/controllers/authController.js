@@ -316,7 +316,11 @@ module.exports.updateProfile = async function updateProfile(req, res, next) {
     const update = {};
 
     if (req.body.name !== undefined) {
-      if (typeof req.body.name !== "string" || req.body.name.length > 80) {
+      if (
+        typeof req.body.name !== "string" ||
+        req.body.name.trim().length === 0 ||
+        req.body.name.length > 80
+      ) {
         return res.status(400).json({ success: false, msg: "Invalid name." });
       }
       update.name = req.body.name.trim();
