@@ -78,8 +78,11 @@ app.get("/", async (req, res) => {
 });
 
 // Machine-readable version of the footer above, for monitoring / deploy checks.
+// Add ?refresh=1 to bypass the 1-hour cache and re-check GitHub immediately,
+// e.g. right after publishing a new release.
 app.get("/version", async (req, res) => {
-  const { version, commitTime, footer } = await getVersionInfo();
+  const force = req.query.refresh === "1" || req.query.refresh === "true";
+  const { version, commitTime, footer } = await getVersionInfo({ force });
   res.status(200).send({ version, commitTime, footer });
 });
 
