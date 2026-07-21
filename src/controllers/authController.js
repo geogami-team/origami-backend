@@ -381,11 +381,17 @@ module.exports.myUser = function myUser(req, res, next) {
 };
 
 module.exports.register = function register(req, res, next) {
+  // Trim stray whitespace (e.g. a leading space from autofill/copy-paste) so
+  // it doesn't fail email-format or username-length validation below; the
+  // UI already trims too, this is defense in depth for any other caller.
+  const email = typeof req.body.email === "string" ? req.body.email.trim() : req.body.email;
+  const username = typeof req.body.username === "string" ? req.body.username.trim() : req.body.username;
+
   let newUser = new User({
     name: req.body.name,
-    email: req.body.email,
-    unconfirmedEmail: req.body.email,
-    username: req.body.username,
+    email: email,
+    unconfirmedEmail: email,
+    username: username,
     password: req.body.password,
     // Store the app language the user had selected while registering, so
     // the account keeps their language as its default.
@@ -395,7 +401,7 @@ module.exports.register = function register(req, res, next) {
   });
 
   // CAREFUL HARDCODED Email-Validator
-  if (!validator.isEmail(req.body.email)) {
+  if (!validator.isEmail(email)) {
     return res.send(400, {
       success: false,
       msg: "Invalid Email.",
@@ -403,7 +409,7 @@ module.exports.register = function register(req, res, next) {
   }
 
   // CAREFUL HARDCODED LENGTH FOR Username
-  if (req.body.username.length < 5) {
+  if (username.length < 5) {
     return res.send(400, {
       success: false,
       msg: "Username must be at least 5 characters.",
