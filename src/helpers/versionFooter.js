@@ -57,9 +57,10 @@ function formatBerlin(isoDate) {
 
 // Returns { version, commitTime, footer }. On any failure it returns a footer of
 // "Version unavailable" so callers (e.g. the root route) never break because of
-// a GitHub outage.
-async function getVersionInfo() {
-  if (cached && Date.now() - cachedAt < CACHE_TTL_MS) {
+// a GitHub outage. Pass { force: true } to bypass the cache and re-fetch from
+// GitHub immediately (used to verify a freshly published release).
+async function getVersionInfo({ force = false } = {}) {
+  if (!force && cached && Date.now() - cachedAt < CACHE_TTL_MS) {
     return cached;
   }
   try {
