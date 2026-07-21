@@ -59,15 +59,28 @@ const db = mongoose.connection;
 //Bind connection to error event (to get notification of connection errors)
 db.on("error", console.error.bind(console, "MongoDB connection error:"));
 
-app.get("/", (req, res) => {
+const { getVersionInfo } = require("./helpers/versionFooter");
+
+app.get("/", async (req, res) => {
+  const { footer } = await getVersionInfo();
   res.header("Content-Type", "text/plain; charset=utf-8");
   res.send(`
+  GeoGami Server - ${footer}
+
   Available routes:
 
   method\t\turl\t\tdescription
+  GET\t\t\t/\t\tthis page (server version + routes)
+  GET\t\t\t/version\tdeployed server version as JSON
   GET\t\t\t/game/all\tget all games
   GET\t\t\t/game/:id\tget game with id
   `);
+});
+
+// Machine-readable version of the footer above, for monitoring / deploy checks.
+app.get("/version", async (req, res) => {
+  const { version, commitTime, footer } = await getVersionInfo();
+  res.status(200).send({ version, commitTime, footer });
 });
 
 const gameRouter = require("./routes/game");
