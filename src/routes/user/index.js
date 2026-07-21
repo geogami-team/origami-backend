@@ -6,7 +6,27 @@ const User = require("../../models/user");
 const Game = require("../../models/game");
 var AuthController = require("../../controllers/authController");
 const { v4: uuidv4 } = require("uuid");
+const validator = require("validator");
 const { verifyUserRegistration } = require("../../controllers/mailController");
+
+// Secrets that must never leave the DB layer on read endpoints. The User
+// model's toJSON transform strips them from responses as well — this .select()
+// exclusion is defense in depth so they aren't even fetched.
+const SENSITIVE_USER_FIELDS =
+  "-password -refreshTokens -refreshToken -refreshTokenExpires -resetPasswordToken -resetPasswordExpires -emailConfirmationToken";
+
+// Mass-assignment guard for the admin create/update endpoints: only these
+// fields may be set from the request body (secrets like refreshTokens or
+// state flags like emailIsConfirmed must not be injectable).
+const pickUserFields = (body, allowed) => {
+  const picked = {};
+  for (const key of allowed) {
+    if (body[key] !== undefined) {
+      picked[key] = body[key];
+    }
+  }
+  return picked;
+};
 
 //register
 router.post("/register", AuthController.register);
@@ -107,6 +127,7 @@ router.get(
   AuthController.roleAuthorization(["admin", "contentAdmin"]),
   function (req, res, next) {
     User.find()
+      .select(SENSITIVE_USER_FIELDS)
       .then((users) => res.json(users))
       .catch((err) => next(err));
   }
@@ -119,6 +140,7 @@ router.get(
   AuthController.roleAuthorization(["admin", "contentAdmin"]),
   function (req, res, next) {
     User.findById(req.params.id)
+      .select(SENSITIVE_USER_FIELDS)
       .then((post) => {
         if (!post) return res.status(404).json({ message: "User not found" });
         res.json(post);
@@ -133,7 +155,32 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   AuthController.roleAuthorization(["admin", "contentAdmin"]),
   function (req, res, next) {
-    User.create(req.body)
+    const fields = pickUserFields(req.body, [
+      "username",
+      "email",
+      "password",
+      "name",
+      "language",
+      "roles",
+    ]);
+
+    // Mirror the self-registration validation. The password is hashed by the
+    // User pre-save hook, so we only validate its strength here.
+    if (!fields.email || !validator.isEmail(fields.email)) {
+      return res.status(400).json({ message: "Invalid email." });
+    }
+    if (!fields.username || fields.username.length < 5) {
+      return res
+        .status(400)
+        .json({ message: "Username must be at least 5 characters." });
+    }
+    if (!fields.password || fields.password.length < 8) {
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 8 characters." });
+    }
+
+    User.create(fields)
       .then((post) => res.json(post))
       .catch((err) => next(err));
   }
@@ -161,7 +208,13 @@ router.put(
   passport.authenticate("jwt", { session: false }),
   AuthController.roleAuthorization(["admin", "contentAdmin"]),
   function (req, res, next) {
-    User.findByIdAndUpdate(req.params.id, req.body, { new: true })
+    // No password here: findByIdAndUpdate would store it unhashed. Password
+    // changes must go through the changepass / password-reset flows.
+    User.findByIdAndUpdate(
+      req.params.id,
+      pickUserFields(req.body, ["username", "email", "name", "language", "roles"]),
+      { new: true }
+    )
       .then((post) => {
         if (!post) return res.status(404).json({ message: "User not found" });
         res.json(post);
