@@ -1,0 +1,2 @@
+22
+# was 18.16.1 — bumped to 22 (Node 18 EOL; 18.16 crashed on sleep/wake, Happy Eyeballs bug)
