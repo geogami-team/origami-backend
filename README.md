@@ -37,6 +37,7 @@ This repository contains the GeoGami backend. It serves the REST endpoints used 
 - [Socket.IO events](#socketio-events)
 - [Database migrations](#database-migrations)
 - [Backups](#backups)
+- [Upgrading MongoDB](#upgrading-mongodb)
 - [Logs](#logs)
 - [Deployment](#deployment)
 
@@ -244,6 +245,17 @@ npx migrate-mongo create my-migration
 ## Backups
 
 `backup.sh` (sample in `backup.example.sh`) dumps the Mongo database and rotates archives. Schedule it via cron on production hosts.
+
+## Upgrading MongoDB
+
+MongoDB version bumps — usually to pick up a security patch — are **manual and
+deliberate** (the `mongo` service is excluded from Watchtower auto-updates). The
+full runbook, including the backup, tag bump, container recreation, and the
+Feature Compatibility Version step, is in [`HOWTO_UPGRADE_MONGODB.md`](./HOWTO_UPGRADE_MONGODB.md).
+
+The short version: back up → pin the new patch tag in both compose files →
+`docker compose pull mongo && docker compose up -d mongo` → verify → raise FCV once
+you're confident you won't roll back. Never skip more than one minor version at a time.
 
 ## Logs
 
