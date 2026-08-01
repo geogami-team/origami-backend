@@ -61,20 +61,13 @@ db.on("error", console.error.bind(console, "MongoDB connection error:"));
 
 const { getVersionInfo } = require("./helpers/versionFooter");
 
-app.get("/", async (req, res) => {
-  const { footer } = await getVersionInfo();
-  res.header("Content-Type", "text/plain; charset=utf-8");
-  res.send(`
-  GeoGami Server - ${footer}
-
-  Available routes:
-
-  method\t\turl\t\tdescription
-  GET\t\t\t/\t\tthis page (server version + routes)
-  GET\t\t\t/version\tdeployed server version as JSON
-  GET\t\t\t/game/all\tget all games
-  GET\t\t\t/game/:id\tget game with id
-  `);
+// This host is a bare API with no UI of its own, so send anyone who opens the
+// root in a browser to the web app's login page. Version/health checks should
+// hit GET /version (below), which stays a plain JSON endpoint.
+// Temporary: a proper landing/docs page (Swagger) is planned — see
+// issues-to-create.md #22.
+app.get("/", (req, res) => {
+  res.redirect(`${process.env.APP_URL}/user/login`);
 });
 
 // Machine-readable version of the footer above, for monitoring / deploy checks.
