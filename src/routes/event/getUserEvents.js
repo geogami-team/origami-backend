@@ -17,7 +17,14 @@ const getUserEvents = async (req, res) => {
     const events = await Event.find({
       $or: [{ user: req.user._id }, { sharedWith: userEmail }],
     })
-      .populate("games", "name place user isMultiplayerGame isVRWorld virEnvType")
+      // `isPublished` / `isVisible` are included because an event keeps games
+      // that the public games list no longer returns (a game unpublished or
+      // soft-deleted after it was added). The UI needs them to show those games
+      // as still-in-the-event but flagged, instead of silently hiding them.
+      .populate(
+        "games",
+        "name place user isMultiplayerGame isVRWorld virEnvType isPublished isVisible"
+      )
       // Owner name is needed for the event PDF (QR instructor label + header) so
       // a shared co-editor can export without a second lookup.
       .populate("user", "name username")
