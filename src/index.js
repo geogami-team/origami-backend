@@ -83,12 +83,14 @@ app.get("/version", async (req, res) => {
 
 const gameRouter = require("./routes/game");
 const trackRouter = require("./routes/track");
+const eventRouter = require("./routes/event");
 const fileRouter = require("./routes/file");
 const userRouter = require("./routes/user");
 const AppVersionRouter = require("./routes/appversion");
 
 app.use("/game", gameRouter);
 app.use("/track", trackRouter);
+app.use("/event", eventRouter);
 app.use("/file", fileRouter);
 app.use("/user", userRouter);
 app.use("/appversion", AppVersionRouter);
