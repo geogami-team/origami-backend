@@ -11,6 +11,8 @@ const helmet = require("helmet");
 const passport = require("passport");
 const cookieparser = require("cookie-parser");
 
+// needed only for testing backend database locally (check docs for further details)
+// require("dotenv").config();
 
 const accessLogStream = rfs("access.log", {
   interval: "1d", // rotate daily
