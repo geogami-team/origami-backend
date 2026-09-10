@@ -13,6 +13,10 @@ const visibleFilter = {
 const publishedFilter = {
   $or: [{ isPublished: { $eq: true } }, { isPublished: { $exists: false } }],
 };
+// Most recently edited games first. updatedAt comes from the schema's
+// timestamps; legacy games written before timestamps were enabled have none
+// and sort last, where the client's _id fallback orders them by creation.
+const recentFirst = { updatedAt: -1 };
 
 const getAllGames = async (req, res) => {
   try {
@@ -32,7 +36,9 @@ const getAllGames = async (req, res) => {
           .select("editors")
           .select("isMultiplayerGame")
           .select("numPlayers")
-          .select("tasksCount");
+          .select("tasksCount")
+          .select("updatedAt")
+          .sort(recentFirst);
       } else {
         // Get all published games except multiplyer and deleted ones
         result = await Game.find({
@@ -52,7 +58,9 @@ const getAllGames = async (req, res) => {
           .select("user")
           .select("isVRWorld")
           .select("isPublished")
-          .select("tasksCount");
+          .select("tasksCount")
+          .select("updatedAt")
+          .sort(recentFirst);
       }
 
       return res.status(200).send({
@@ -63,7 +71,9 @@ const getAllGames = async (req, res) => {
       // Get published games data except user id
       let result = await Game.find({
         $and: [visibleFilter, publishedFilter],
-      }).select("-user");
+      })
+        .select("-user")
+        .sort(recentFirst);
       return res.status(200).send({
         message: "Games found successfully.",
         content: result,
