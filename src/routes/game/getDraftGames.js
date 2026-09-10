@@ -38,7 +38,9 @@ const getDraftGames = async (req, res) => {
       .select("editors")
       .select("isMultiplayerGame")
       .select("numPlayers")
-      .select("tasksCount");
+      .select("tasksCount")
+      .select("updatedAt")
+      .sort({ updatedAt: -1 });
 
     return res.status(200).send({
       message: "Draft games found successfully.",
